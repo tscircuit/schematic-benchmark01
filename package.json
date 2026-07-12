@@ -6,6 +6,7 @@
   "scripts": {
     "benchmark:fetch": "bun run src/cli.ts fetch",
     "benchmark:new": "bun run src/cli.ts new",
+    "benchmark:build": "bun run src/cli.ts build",
     "benchmark:score": "bun run src/cli.ts score",
     "eval:judge": "bun run src/evaluate-judge.ts",
     "check": "bunx tsc --noEmit && bun test",

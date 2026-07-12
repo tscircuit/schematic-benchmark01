@@ -18,38 +18,36 @@ bun benchmark:fetch --row 0
 # Create an isolated trial for that case.
 bun benchmark:new --case 000000
 
-# Put the attempted recreation in the printed candidate/ directory, then score it.
+# Put index.circuit.tsx in candidate/, then score it.
 bun benchmark:score --trial trials/000000/<trial-id>
 ```
 
-The candidate directory may contain:
-
-- `manifest.json` — normalized components and nets (recommended; schema below)
-- `circuit.json` — tscircuit Circuit JSON; components and nets are extracted
-  automatically when no manifest is supplied
-- `schematic.png` — enables the multimodal model-judge score
-- source files such as `index.tsx` and notes about the model/run
+The candidate directory contains source code, with `index.circuit.tsx` as the
+default entrypoint. Candidate-generated Circuit JSON, manifests, SVGs, and PNGs
+are never used for scoring.
 
 The AI should only receive `task/`, not `.benchmark/`. The latter contains the
 held-back reference metadata used by the scorer.
 
-## Candidate manifest
+## Source-only constraint
 
-```json
-{
-  "components": [
-    { "reference": "R1", "type": "R", "value": "10k" },
-    { "reference": "C1", "type": "C", "value": "100nF" }
-  ],
-  "nets": [
-    { "name": "VCC", "members": ["R1.1", "C1.1"] }
-  ]
-}
-```
+This benchmark measures whether declarative tscircuit TSX can express each
+schematic. Candidates must use components and `<trace>` connectivity.
+`<schematicline>` and `<netlabel>` are forbidden because they can manually draw
+the expected appearance without demonstrating that component placement and
+connectivity produce the schematic.
 
-Reference designators are ignored when matching components, so harmless
-renumbering is not penalized. Net names are also ignored; nets are compared by
-their connected `reference.pin` members.
+Before scoring, the harness:
+
+1. audits all candidate JavaScript and TypeScript source;
+2. deletes every previous `candidate/dist` artifact;
+3. runs `tsci build` itself with API credentials removed from the environment;
+4. copies the untouched Circuit JSON and schematic SVG to `trial/generated/`;
+5. rasterizes that SVG to PNG itself; and
+6. records SHA-256 hashes for TSX, Circuit JSON, SVG, and PNG.
+
+Only `generated/` artifacts are scored. Post-processing scripts and files left
+in `candidate/` cannot influence the result.
 
 ## Score
 
@@ -77,6 +75,7 @@ trial format.
 ```sh
 bun benchmark:fetch --row 123 --force
 bun benchmark:new --case 000123 --label gpt-5
+bun benchmark:build --trial trials/000123/gpt-5
 bun benchmark:score --trial trials/000123/gpt-5
 bun benchmark:score --trial trials/000123/gpt-5 --judge-runs 3 --model gpt-5.6
 bun eval:judge
@@ -92,9 +91,10 @@ It does not commit large samples by default; `cases/` and `trials/` are ignored.
 
 1. A benchmark operator fetches a case.
 2. The agent is given only the created trial's `task/` and `candidate/` paths.
-3. The agent writes its recreation without access to `.benchmark/`.
-4. The operator runs the scorer after the agent finishes.
-5. Preserve `score.json`, model name, prompt, token/runtime data, and git SHA.
+3. The agent writes TSX without access to `.benchmark/`.
+4. The operator runs the scorer, which audits and independently rebuilds it.
+5. Preserve `score.json`, `generated/provenance.json`, model name,
+   prompt, token/runtime data, and git SHA.
 
 The source dataset is CC-BY-4.0 and aggregates upstream projects that may carry
 their own licenses. Keep attribution and review upstream licensing before
