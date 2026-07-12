@@ -1,0 +1,5 @@
+node_modules/
+cases/
+trials/
+*.log
+.DS_Store
