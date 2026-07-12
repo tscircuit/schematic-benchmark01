@@ -15,11 +15,11 @@ bun install
 # Download one dataset row and prepare its public task fixture.
 bun benchmark:fetch --row 0
 
-# Create an isolated trial for that case.
-bun benchmark:new --case 000000
+# Create a predictably named isolated trial for that case.
+bun benchmark:new --case 000000 --label gpt-5-6-sol
 
 # Put index.circuit.tsx in candidate/, then score it.
-bun benchmark:score --trial trials/000000/<trial-id>
+bun benchmark:score --trial trials/000000/gpt-5-6-sol
 ```
 
 The candidate directory contains source code, with `index.circuit.tsx` as the
@@ -57,7 +57,7 @@ single opaque number:
 - **components (60%)** — multiset F1 over normalized component type and value
 - **connectivity (25%)** — multiset F1 over net membership, when reference and
   candidate net data are available
-- **model judge (15%)** — repeated GPT-5.6 judgments of electrical equivalence
+- **model judge (15%)** — repeated Sol 5.6 judgments of electrical equivalence
   from two PNG attachments, when both rendered images and API access are available
 
 Unavailable optional dimensions are omitted and the remaining weights are
@@ -74,10 +74,10 @@ trial format.
 
 ```sh
 bun benchmark:fetch --row 123 --force
-bun benchmark:new --case 000123 --label gpt-5
-bun benchmark:build --trial trials/000123/gpt-5
-bun benchmark:score --trial trials/000123/gpt-5
-bun benchmark:score --trial trials/000123/gpt-5 --judge-runs 3 --model gpt-5.6
+bun benchmark:new --case 000123 --label gpt-5-6-sol
+bun benchmark:build --trial trials/000123/gpt-5-6-sol
+bun benchmark:score --trial trials/000123/gpt-5-6-sol
+bun benchmark:score --trial trials/000123/gpt-5-6-sol --judge-runs 3 --model gpt-5.6-sol
 bun eval:judge
 bun test
 bun run check
@@ -85,7 +85,9 @@ bun run check
 
 `benchmark:fetch` uses the Hugging Face dataset server and stores dataset name,
 split, row number, source repository, and a SHA-256 digest for reproducibility.
-It does not commit large samples by default; `cases/` and `trials/` are ignored.
+It does not commit large samples by default; `cases/`, `trials/`, and
+`eval-results/` are ignored. The repository contains the reproducible harness,
+not downloaded dataset rows, generated schematics, scores, or API responses.
 
 ## Fair-run protocol
 
@@ -95,6 +97,11 @@ It does not commit large samples by default; `cases/` and `trials/` are ignored.
 4. The operator runs the scorer, which audits and independently rebuilds it.
 5. Preserve `score.json`, `generated/provenance.json`, model name,
    prompt, token/runtime data, and git SHA.
+
+A low score can then be investigated against the submitted TSX and its untouched
+build output. This keeps failures useful: they can reveal an agent mistake, a
+tscircuit rendering or connectivity issue, or a limitation in what the allowed
+declarative TSX elements can express.
 
 The source dataset is CC-BY-4.0 and aggregates upstream projects that may carry
 their own licenses. Keep attribution and review upstream licensing before
@@ -111,7 +118,7 @@ vote agreement are retained in `score.json`. The benchmark uses the fraction of
 continuous similarity is diagnostic only because the validation suite found it
 poorly calibrated for subtle but real changes.
 
-`OPENAI_API_KEY` is required. `gpt-5.6` is the default; use `--model` or
+`OPENAI_API_KEY` is required. `gpt-5.6-sol` is the default; use `--model` or
 `OPENAI_JUDGE_MODEL` to pin another vision-capable model.
 
 `bun eval:judge` creates a six-pair synthetic validation set, rasterizes all SVG

@@ -26,7 +26,7 @@ export async function judgeSchematics(
   if (!Number.isInteger(repeats) || repeats < 1 || repeats > 9) {
     throw new Error("judge repeats must be an integer from 1 to 9")
   }
-  const model = options.model ?? "gpt-5.6"
+  const model = options.model ?? "gpt-5.6-sol"
   const random = options.random ?? Math.random
   const [reference, candidate] = await Promise.all([
     pngDataUrl(referencePng),
