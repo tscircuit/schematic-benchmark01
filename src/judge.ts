@@ -44,8 +44,11 @@ export async function judgeSchematics(
       },
       body: JSON.stringify({
         model,
-        reasoning: { effort: "high" },
-        max_output_tokens: 1200,
+        reasoning: { effort: "medium" },
+        // Real schematics require substantially more reasoning than the small
+        // synthetic judge fixtures. The visible JSON remains short, but the
+        // Responses API counts reasoning tokens against this allowance.
+        max_output_tokens: 6000,
         input: [{
           role: "user",
           content: [
@@ -116,7 +119,11 @@ function outputText(payload: Record<string, unknown>) {
       }
     }
   }
-  throw new Error("judge response contained no output text")
+  const status = typeof payload.status === "string" ? payload.status : "unknown"
+  const reason = typeof payload.incomplete_details === "object"
+    ? JSON.stringify(payload.incomplete_details)
+    : "none"
+  throw new Error(`judge response contained no output text (status=${status}, incomplete_details=${reason})`)
 }
 
 async function pngDataUrl(path: string) {
