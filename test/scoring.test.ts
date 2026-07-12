@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { manifestFromCircuitJson, manifestFromOpenSchematicsJson } from "../src/manifest"
 import { combineScores, multisetF1 } from "../src/scoring"
+import { aggregateJudgeRuns } from "../src/judge"
 
 describe("multiset scoring", () => {
   test("penalizes missing and duplicate components", () => {
@@ -14,6 +15,17 @@ describe("multiset scoring", () => {
     expect(result.effectiveWeights.components).toBe(1)
     expect(result.warnings).toHaveLength(2)
   })
+})
+
+test("aggregates repeated model judgments", () => {
+  const result = aggregateJudgeRuns([
+    { sameCircuit: true, similarity: 0.9, confidence: 0.8, differences: [], explanation: "same", responseId: "1", imageOrder: "reference-first" },
+    { sameCircuit: true, similarity: 0.8, confidence: 0.9, differences: [], explanation: "same", responseId: "2", imageOrder: "candidate-first" },
+    { sameCircuit: false, similarity: 0.4, confidence: 0.6, differences: ["unclear"], explanation: "different", responseId: "3", imageOrder: "reference-first" },
+  ])
+  expect(result.sameCircuitVote).toBeCloseTo(2 / 3)
+  expect(result.agreement).toBeCloseTo(2 / 3)
+  expect(result.score).toBeCloseTo(0.7)
 })
 
 describe("manifest adapters", () => {

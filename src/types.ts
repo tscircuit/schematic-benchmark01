@@ -21,13 +21,26 @@ export interface DimensionScore {
   candidate?: number
 }
 
+export interface JudgeVerdict {
+  sameCircuit: boolean
+  similarity: number
+  confidence: number
+  differences: string[]
+  explanation: string
+}
+
+export interface JudgeRun extends JudgeVerdict {
+  responseId: string
+  imageOrder: "reference-first" | "candidate-first"
+}
+
 export interface ScoreResult {
   version: 1
   total: number
   dimensions: {
     components: DimensionScore
     connectivity?: DimensionScore
-    visual?: DimensionScore
+    modelJudge?: DimensionScore
   }
   effectiveWeights: Record<string, number>
   warnings: string[]

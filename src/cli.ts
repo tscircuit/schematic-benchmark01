@@ -3,7 +3,8 @@ import { existsSync } from "node:fs"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { basename, join, resolve } from "node:path"
 import { manifestFromCircuitJson, manifestFromOpenSchematicsJson } from "./manifest"
-import { combineScores, visualSimilarity } from "./scoring"
+import { aggregateJudgeRuns, judgeSchematics } from "./judge"
+import { combineScores } from "./scoring"
 import type { Manifest } from "./types"
 
 const DATASET = "bshada/open-schematics"
@@ -93,16 +94,22 @@ async function scoreTrial() {
     ? await readManifest(manifestPath)
     : manifestFromCircuitJson(JSON.parse(await readFile(circuitPath, "utf8")))
   const referenceImage = join(caseDir, "task", "reference.png")
-  const candidateImage = ["schematic.png", "schematic.svg"].map((name) => join(candidateDir, name)).find(existsSync)
-  const visual = existsSync(referenceImage) && candidateImage
-    ? await visualSimilarity(referenceImage, candidateImage)
+  const candidateImage = join(candidateDir, "schematic.png")
+  const judge = existsSync(referenceImage) && existsSync(candidateImage)
+    ? aggregateJudgeRuns(await judgeSchematics(referenceImage, candidateImage, {
+        model: option("model"),
+        repeats: option("judge-runs") ? Number(option("judge-runs")) : undefined,
+      }))
     : undefined
-  const result = combineScores(reference, candidate, visual)
+  // The validation suite shows similarity is useful context but not calibrated:
+  // subtle real changes can still receive ~0.9. Use the repeated binary vote.
+  const result = combineScores(reference, candidate, judge?.sameCircuitVote)
   await writeJson(join(trialDir, "score.json"), {
     ...result,
     case: trial.case,
     trial: basename(trialDir),
     scoredAt: new Date().toISOString(),
+    judge,
   })
   console.log(`score ${(result.total * 100).toFixed(1)}%`)
   console.log(JSON.stringify(result.dimensions, null, 2))

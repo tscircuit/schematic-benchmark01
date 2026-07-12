@@ -1,4 +1,3 @@
-import sharp from "sharp"
 import { componentKey, netKey } from "./manifest"
 import type { DimensionScore, Manifest, ScoreResult } from "./types"
 
@@ -19,23 +18,10 @@ export function multisetF1(reference: string[], candidate: string[]): DimensionS
   return { score, matched, reference: reference.length, candidate: candidate.length }
 }
 
-export async function visualSimilarity(referencePath: string, candidatePath: string) {
-  const options = { width: 64, height: 64, fit: "contain" as const, background: "white" }
-  const [reference, candidate] = await Promise.all([
-    sharp(referencePath).flatten({ background: "white" }).resize(options).greyscale().raw().toBuffer(),
-    sharp(candidatePath).flatten({ background: "white" }).resize(options).greyscale().raw().toBuffer(),
-  ])
-  let error = 0
-  for (let index = 0; index < reference.length; index++) {
-    error += Math.abs(reference[index]! - candidate[index]!) / 255
-  }
-  return 1 - error / reference.length
-}
-
 export function combineScores(
   reference: Manifest,
   candidate: Manifest,
-  visual?: number,
+  modelJudge?: number,
 ): ScoreResult {
   const warnings: string[] = []
   const components = multisetF1(
@@ -50,11 +36,11 @@ export function combineScores(
   } else {
     warnings.push("connectivity omitted: reference or candidate nets are unavailable")
   }
-  if (visual !== undefined) {
-    dimensions.visual = { score: visual }
-    weights.visual = 0.15
+  if (modelJudge !== undefined) {
+    dimensions.modelJudge = { score: modelJudge }
+    weights.modelJudge = 0.15
   } else {
-    warnings.push("visual omitted: reference or candidate render is unavailable")
+    warnings.push("model judge omitted: reference/candidate PNG or API access is unavailable")
   }
   const denominator = Object.values(weights).reduce((sum, value) => sum + value, 0)
   const effectiveWeights = Object.fromEntries(
