@@ -6,6 +6,7 @@ import { manifestFromCircuitJson, manifestFromOpenSchematicsJson } from "./manif
 import { aggregateJudgeRuns, judgeSchematics } from "./judge"
 import { combineScores } from "./scoring"
 import type { Manifest } from "./types"
+import { buildCandidate } from "./build-candidate"
 
 const DATASET = "bshada/open-schematics"
 const ROOT = resolve(import.meta.dir, "..")
@@ -53,7 +54,7 @@ async function fetchCase() {
       await Bun.write(join(publicDir, imageFile), await imageResponse.arrayBuffer())
     }
   }
-  const prompt = `# Schematic recreation task\n\nRecreate the supplied schematic as a tscircuit design. Preserve component types, values, and connectivity as closely as possible. Do not access the sibling \`.benchmark\` directory.\n\nSource project: ${String(source.name ?? "unknown")}\nDescription: ${String(source.description ?? "") || "(none)"}\nReference image: ${imageFile ?? "unavailable"}\n`
+  const prompt = `# Schematic recreation task\n\nRecreate the supplied schematic as a tscircuit TSX design. Preserve component types, values, and connectivity as closely as possible. Use declarative components and <trace> elements. <schematicline> and <netlabel> are forbidden. Do not create or modify Circuit JSON, SVG, or PNG output; the benchmark will build and render your TSX independently. Do not access the sibling \`.benchmark\` directory.\n\nSource project: ${String(source.name ?? "unknown")}\nDescription: ${String(source.description ?? "") || "(none)"}\nReference image: ${imageFile ?? "unavailable"}\n`
   await writeFile(join(publicDir, "README.md"), prompt)
   const digest = createHash("sha256").update(source.schematic_json).digest("hex")
   await writeJson(join(privateDir, "reference.json"), manifest)
@@ -77,7 +78,7 @@ async function newTrial() {
   const trialDir = join(ROOT, "trials", caseId, id)
   await mkdir(join(trialDir, "candidate"), { recursive: true })
   await Bun.$`cp -R ${join(caseDir, "task")} ${join(trialDir, "task")}`
-  await writeFile(join(trialDir, "candidate", "README.md"), "Place the recreation source and manifest.json or circuit.json here. Add schematic.png/svg to enable visual scoring.\n")
+  await writeFile(join(trialDir, "candidate", "README.md"), "Create index.circuit.tsx using declarative components and <trace> connectivity. <schematicline> and <netlabel> are forbidden. Candidate-generated Circuit JSON, SVG, PNG, and manifests are ignored; the benchmark rebuilds from TSX.\n")
   await writeJson(join(trialDir, "trial.json"), { case: caseId, label: id, createdAt: new Date().toISOString() })
   console.log(`created trial ${trialDir}`)
 }
@@ -87,14 +88,10 @@ async function scoreTrial() {
   const trial = JSON.parse(await readFile(join(trialDir, "trial.json"), "utf8")) as { case: string }
   const caseDir = join(ROOT, "cases", trial.case)
   const reference = await readManifest(join(caseDir, ".benchmark", "reference.json"))
-  const candidateDir = join(trialDir, "candidate")
-  const manifestPath = join(candidateDir, "manifest.json")
-  const circuitPath = join(candidateDir, "circuit.json")
-  const candidate = existsSync(manifestPath)
-    ? await readManifest(manifestPath)
-    : manifestFromCircuitJson(JSON.parse(await readFile(circuitPath, "utf8")))
+  const generated = await buildCandidate(trialDir, option("entry") ?? "index.circuit.tsx")
+  const candidate = manifestFromCircuitJson(JSON.parse(await readFile(generated.circuitJson, "utf8")))
   const referenceImage = join(caseDir, "task", "reference.png")
-  const candidateImage = join(candidateDir, "schematic.png")
+  const candidateImage = generated.schematicPng
   const judge = existsSync(referenceImage) && existsSync(candidateImage)
     ? aggregateJudgeRuns(await judgeSchematics(referenceImage, candidateImage, {
         model: option("model"),
@@ -110,6 +107,7 @@ async function scoreTrial() {
     trial: basename(trialDir),
     scoredAt: new Date().toISOString(),
     judge,
+    generated: { entrypoint: generated.entrypoint, hashes: generated.hashes },
   })
   console.log(`score ${(result.total * 100).toFixed(1)}%`)
   console.log(JSON.stringify(result.dimensions, null, 2))
@@ -135,8 +133,12 @@ const command = process.argv[2]
 try {
   if (command === "fetch") await fetchCase()
   else if (command === "new") await newTrial()
+  else if (command === "build") {
+    const generated = await buildCandidate(resolve(required("trial")), option("entry") ?? "index.circuit.tsx")
+    console.log(JSON.stringify(generated, null, 2))
+  }
   else if (command === "score") await scoreTrial()
-  else throw new Error("usage: cli.ts <fetch|new|score> [options]")
+  else throw new Error("usage: cli.ts <fetch|new|build|score> [options]")
 } catch (error) {
   console.error(error instanceof Error ? error.message : error)
   process.exit(1)
