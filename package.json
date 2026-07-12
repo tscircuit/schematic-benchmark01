@@ -1,0 +1,21 @@
+{
+  "name": "schematic-benchmark01",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "benchmark:fetch": "bun run src/cli.ts fetch",
+    "benchmark:new": "bun run src/cli.ts new",
+    "benchmark:score": "bun run src/cli.ts score",
+    "eval:judge": "bun run src/evaluate-judge.ts",
+    "check": "bunx tsc --noEmit && bun test",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "sharp": "^0.34.3"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.22",
+    "typescript": "^5.9.2"
+  }
+}
