@@ -6,7 +6,7 @@ import { aggregateJudgeRuns, judgeSchematics } from "./judge"
 type Fixture = { id: string; expectedSame: boolean; svg: string; mutation: string }
 const outputDir = resolve(process.argv[2] ?? "eval-results/judge")
 const repeats = Number(process.env.JUDGE_REPEATS ?? "3")
-const model = process.env.OPENAI_JUDGE_MODEL ?? "gpt-5.6"
+const model = process.env.OPENAI_JUDGE_MODEL ?? "gpt-5.6-sol"
 
 await mkdir(join(outputDir, "png"), { recursive: true })
 const reference = schematicSvg({})
