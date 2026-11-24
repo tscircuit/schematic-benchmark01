@@ -17,6 +17,23 @@ describe("multiset scoring", () => {
   })
 })
 
+test("normalizes KiCad and tscircuit passive component type aliases", () => {
+  const reference = {
+    components: [
+      { type: "R", value: "10k" },
+      { type: "C", value: "100nF" },
+    ],
+  }
+  const candidate = {
+    components: [
+      { type: "simple_resistor", value: "10k" },
+      { type: "simple_capacitor", value: "100nF" },
+    ],
+  }
+
+  expect(combineScores(reference, candidate).dimensions.components.score).toBe(1)
+})
+
 test("aggregates repeated model judgments", () => {
   const result = aggregateJudgeRuns([
     { sameCircuit: true, similarity: 0.9, confidence: 0.8, differences: [], explanation: "same", responseId: "1", imageOrder: "reference-first" },

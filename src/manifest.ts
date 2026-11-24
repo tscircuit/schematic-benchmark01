@@ -6,8 +6,19 @@ const clean = (value: unknown) =>
     .toLowerCase()
     .replace(/\s+/g, "")
 
+const passiveTypeAliases: Record<string, string> = {
+  r: "resistor",
+  c: "capacitor",
+  l: "inductor",
+}
+
+const canonicalComponentType = (type: string) => {
+  const normalized = clean(type).replace(/^simple_/, "")
+  return passiveTypeAliases[normalized] ?? normalized
+}
+
 export const componentKey = (component: Component) =>
-  `${clean(component.type)}|${clean(component.value)}`
+  `${canonicalComponentType(component.type)}|${clean(component.value)}`
 
 export const netKey = (net: Net) =>
   [...new Set(net.members.map(clean).filter(Boolean))].sort().join("|")
